@@ -40,10 +40,12 @@ class ArtikelController extends Controller
         ], $messages);
     
         if ($request->hasFile('image')) {
-            // simpan di public/images/artikels
-            $path = $request->file('image')->store('images/artikels', 'public');
-            $data['image'] = $path;
+            $file = $request->file('image');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('images/artikels'), $filename);
+            $data['image'] = 'images/artikels/' . $filename;
         }
+
     
         $artikel = Artikel::create($data);
     
@@ -85,13 +87,17 @@ class ArtikelController extends Controller
         ], $messages);
     
         if ($request->hasFile('image')) {
-            // hapus file lama bila ada
-            if ($artikel->image) {
-                Storage::disk('public')->delete($artikel->image);
+            // hapus file lama jika ada
+            if ($artikel->image && file_exists(public_path($artikel->image))) {
+                unlink(public_path($artikel->image));
             }
-            $path = $request->file('image')->store('images/artikels', 'public');
-            $data['image'] = $path;
+
+            $file = $request->file('image');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('images/artikels'), $filename);
+            $data['image'] = 'images/artikels/' . $filename;
         }
+
     
         $artikel->update($data);
     
@@ -108,8 +114,8 @@ class ArtikelController extends Controller
     public function destroy(Artikel $artikel)
     {
         // hapus file image bila ada
-        if ($artikel->image) {
-            Storage::disk('public')->delete($artikel->image);
+        if ($artikel->image && file_exists(public_path($artikel->image))) {
+            unlink(public_path($artikel->image));
         }
         $artikel->delete();
 

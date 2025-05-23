@@ -15,6 +15,11 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         if ($user) {
+            // Bangun URL foto langsung dari folder public
+            $user->photo_url = $user->photo
+                ? url($user->photo)
+                : null;
+
             return response()->json([
                 'data' => $user
             ]);
@@ -30,18 +35,18 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'message' => 'User tidak ditemukan.'
             ], 404);
         }
 
-        // Validasi data yang dikirimkan
+        // Validasi input
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|max:255|unique:users,email,' . $user->id,
             'no_phone' => 'nullable|string|max:20',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'photo'    => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         if ($validator->fails()) {
@@ -50,22 +55,33 @@ class ProfileController extends Controller
             ], 400);
         }
 
-        // Update user data
-        $user->name = $request->name;
-        $user->email = $request->email;
+        // Assign fields
+        $user->name     = $request->name;
+        $user->email    = $request->email;
         $user->no_phone = $request->no_phone;
 
-        // Jika ada foto baru yang diupload
-        if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('photos', 'public');
-            $user->photo = $photoPath;
+        // Jika ada foto baru
+        if ($file = $request->file('photo')) {
+            // Hapus lama
+            if ($user->photo && file_exists(public_path($user->photo))) {
+                unlink(public_path($user->photo));
+            }
+            // Simpan langsung ke public/photos
+            $filename     = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('photos'), $filename);
+            $user->photo = 'photos/' . $filename;
         }
 
         $user->save();
 
+        // Tambah URL foto
+        $user->photo_url = $user->photo
+            ? url($user->photo)
+            : null;
+
         return response()->json([
             'message' => 'Profil berhasil diperbarui.',
-            'data' => $user
+            'data'    => $user
         ]);
     }
 }

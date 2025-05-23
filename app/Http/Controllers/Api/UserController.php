@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 class UserController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Tampilkan semua user.
      */
     public function index()
     {
@@ -21,7 +21,7 @@ class UserController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Buat user baru.
      */
     public function store(Request $request)
     {
@@ -46,7 +46,7 @@ class UserController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Tampilkan user tertentu.
      */
     public function show(string $id)
     {
@@ -57,7 +57,7 @@ class UserController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update user.
      */
     public function update(Request $request, string $id)
     {
@@ -70,14 +70,13 @@ class UserController extends Controller
             'phone'    => 'nullable|string|max:20',
         ]);
 
-        // Update fields
         if (isset($validated['name'])) {
             $user->name = $validated['name'];
         }
         if (isset($validated['email'])) {
             $user->email = $validated['email'];
         }
-        if (isset($validated['password'])) {
+        if (! empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
         }
         if (array_key_exists('phone', $validated)) {
@@ -93,7 +92,7 @@ class UserController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Hapus user.
      */
     public function destroy(string $id)
     {

@@ -11,123 +11,118 @@ use App\Models\User;
 
 class PengepulController extends Controller
 {
-    /**
-     * Display a listing of pengepul users.
-     */
-        public function index()
+    public function index()
     {
         $pengepuls = User::where('role', 'pengepul')->get();
 
-        $pengepuls->transform(function ($item) {
-            $item->photo_url = $item->photo ? url('storage/' . $item->photo) : null;
-            return $item;
-        });
+        // Generate URL langsung dari folder public/pengepul
+        $pengepuls->transform(fn($item) => tap($item, function($i) {
+            $i->photo_url = $i->photo
+                ? url('pengepul/' . basename($i->photo))
+                : null;
+        }));
 
         return response()->json([
             'success' => true,
-            'data' => $pengepuls,
+            'data'    => $pengepuls,
         ], 200);
     }
 
-    /**
-     * Store a newly created pengepul user.
-     */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'no_phone' => 'nullable|string|max:20',
-            'password' => 'required|string|min:6|confirmed',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        $v = $request->validate([
+            'name'      => 'required|string|max:255',
+            'email'     => 'required|email|unique:users,email',
+            'no_phone'  => 'nullable|string|max:20',
+            'password'  => 'required|string|min:6|confirmed',
+            'photo'     => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $photoPath = null;
-        if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('pengepul', 'public');
+        if ($file = $request->file('photo')) {
+            $filename   = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('pengepul'), $filename);
+            $photoPath  = 'pengepul/' . $filename;
         }
 
         $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'no_phone' => $validated['no_phone'] ?? null,
-            'role' => 'pengepul',
-            'photo' => $photoPath,
+            'name'     => $v['name'],
+            'email'    => $v['email'],
+            'password' => Hash::make($v['password']),
+            'no_phone' => $v['no_phone'] ?? null,
+            'role'     => 'pengepul',
+            'photo'    => $photoPath,
         ]);
+
+        // Set photo_url langsung
+        $user->photo_url = $photoPath ? url($photoPath) : null;
 
         return response()->json([
             'success' => true,
-            'data' => $user,
+            'data'    => $user,
             'message' => 'Pengepul created successfully',
         ], 201);
     }
 
-    /**
-     * Display the specified pengepul user.
-     */
     public function show($id)
     {
         $user = User::where('role', 'pengepul')->findOrFail($id);
-
-        $user->photo_url = $user->photo ? url('storage/' . $user->photo) : null;
+        $user->photo_url = $user->photo ? url($user->photo) : null;
 
         return response()->json([
             'success' => true,
-            'data' => $user,
+            'data'    => $user,
         ], 200);
     }
 
-    /**
-     * Update the specified pengepul user.
-     */
     public function update(Request $request, $id)
     {
         $user = User::where('role', 'pengepul')->findOrFail($id);
 
-        $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'email' => "sometimes|required|email|unique:users,email,{$id}",
-            'password' => 'sometimes|nullable|string|min:6|confirmed',
-            'no_phone' => 'nullable|string|max:20',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        $v = $request->validate([
+            'name'      => 'sometimes|required|string|max:255',
+            'email'     => "sometimes|required|email|unique:users,email,{$id}",
+            'password'  => 'sometimes|nullable|string|min:6|confirmed',
+            'no_phone'  => 'nullable|string|max:20',
+            'photo'     => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        if (isset($validated['name'])) {
-            $user->name = $validated['name'];
-        }
-        if (isset($validated['email'])) {
-            $user->email = $validated['email'];
-        }
-        if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
-        }
-        if (array_key_exists('no_phone', $validated)) {
-            $user->no_phone = $validated['no_phone'];
-        }
-        if ($request->hasFile('photo')) {
-            // Hapus foto lama jika perlu (opsional)
-            if ($user->photo) {
-                \Storage::disk('public')->delete($user->photo);
+        // Update fields
+        if (isset($v['name']))     $user->name      = $v['name'];
+        if (isset($v['email']))    $user->email     = $v['email'];
+        if (!empty($v['password'])) $user->password = Hash::make($v['password']);
+        if (array_key_exists('no_phone', $v)) $user->no_phone = $v['no_phone'];
+
+        // Handle new photo
+        if ($file = $request->file('photo')) {
+            // hapus lama
+            if ($user->photo && file_exists(public_path($user->photo))) {
+                unlink(public_path($user->photo));
             }
-            $user->photo = $request->file('photo')->store('pengepul', 'public');
+            $filename  = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('pengepul'), $filename);
+            $user->photo = 'pengepul/' . $filename;
         }
 
         $user->save();
+        $user->photo_url = $user->photo ? url($user->photo) : null;
 
         return response()->json([
             'success' => true,
-            'data' => $user,
+            'data'    => $user,
             'message' => 'Pengepul updated successfully',
         ], 200);
     }
 
-    /**
-     * Remove the specified pengepul user from storage.
-     */
     public function destroy($id)
     {
         $user = User::where('role', 'pengepul')->findOrFail($id);
+
+        // hapus file foto
+        if ($user->photo && file_exists(public_path($user->photo))) {
+            unlink(public_path($user->photo));
+        }
+
         $user->delete();
 
         return response()->json([
@@ -136,9 +131,6 @@ class PengepulController extends Controller
         ], 200);
     }
 
-    /**
-     * Import pengepul users from Excel file.
-     */
     public function import(Request $request)
     {
         $request->validate([
