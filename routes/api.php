@@ -7,7 +7,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Api\ArtikelController;
 use App\Http\Controllers\Api\PengepulController;
 use App\Http\Controllers\Api\JanjiTemuController;
-use App\Http\Controllers\Api\DaftarhargaController;
+use App\Http\Controllers\Api\DaftarHargaController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TransaksiController;
 use App\Http\Controllers\Api\ProfileController;
@@ -29,7 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('janji-temu/{id}/approve', [JanjiTemuController::class, 'approve']);
     Route::post('janji-temu/{id}/reject', [JanjiTemuController::class, 'reject']);
     Route::get('/task/by-pengepul', [TaskController::class, 'getTasksByPengepul']);
-    Route::resource('harga', DaftarhargaController::class);
+    Route::resource('harga', DaftarHargaController::class);
     Route::resource('task', TaskController::class);
     Route::resource('transaksi', TransaksiController::class);
     Route::post('/task/{id}/accepted', [TaskController::class, 'accepted']);
