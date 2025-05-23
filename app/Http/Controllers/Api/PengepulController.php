@@ -11,21 +11,33 @@ use App\Models\User;
 
 class PengepulController extends Controller
 {
+    // Helper upload foto
+    private function uploadPhoto($file, $oldPhoto = null)
+    {
+        if ($oldPhoto && file_exists(public_path($oldPhoto))) {
+            unlink(public_path($oldPhoto));
+        }
+
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $file->move(public_path('pengepul'), $filename);
+
+        return 'pengepul/' . $filename;
+    }
+
     public function index()
     {
         $pengepuls = User::where('role', 'pengepul')->get();
 
-        // Generate URL langsung dari folder public/pengepul
-        $pengepuls->transform(fn($item) => tap($item, function($i) {
-            $i->photo_url = $i->photo
-                ? url('pengepul/' . basename($i->photo))
-                : null;
-        }));
+        $pengepuls->transform(function ($item) {
+            // Gunakan url() dengan path yang sudah disimpan relatif
+            $item->photo_url = $item->photo ? url($item->photo) : null;
+            return $item;
+        });
 
         return response()->json([
             'success' => true,
-            'data'    => $pengepuls,
-        ], 200);
+            'data' => $pengepuls,
+        ]);
     }
 
     public function store(Request $request)
@@ -40,9 +52,7 @@ class PengepulController extends Controller
 
         $photoPath = null;
         if ($file = $request->file('photo')) {
-            $filename   = time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('pengepul'), $filename);
-            $photoPath  = 'pengepul/' . $filename;
+            $photoPath = $this->uploadPhoto($file);
         }
 
         $user = User::create([
@@ -54,7 +64,6 @@ class PengepulController extends Controller
             'photo'    => $photoPath,
         ]);
 
-        // Set photo_url langsung
         $user->photo_url = $photoPath ? url($photoPath) : null;
 
         return response()->json([
@@ -87,24 +96,17 @@ class PengepulController extends Controller
             'photo'     => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        // Update fields
-        if (isset($v['name']))     $user->name      = $v['name'];
-        if (isset($v['email']))    $user->email     = $v['email'];
+        if (isset($v['name']))      $user->name = $v['name'];
+        if (isset($v['email']))     $user->email = $v['email'];
         if (!empty($v['password'])) $user->password = Hash::make($v['password']);
         if (array_key_exists('no_phone', $v)) $user->no_phone = $v['no_phone'];
 
-        // Handle new photo
         if ($file = $request->file('photo')) {
-            // hapus lama
-            if ($user->photo && file_exists(public_path($user->photo))) {
-                unlink(public_path($user->photo));
-            }
-            $filename  = time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('pengepul'), $filename);
-            $user->photo = 'pengepul/' . $filename;
+            $user->photo = $this->uploadPhoto($file, $user->photo);
         }
 
         $user->save();
+
         $user->photo_url = $user->photo ? url($user->photo) : null;
 
         return response()->json([
@@ -118,7 +120,6 @@ class PengepulController extends Controller
     {
         $user = User::where('role', 'pengepul')->findOrFail($id);
 
-        // hapus file foto
         if ($user->photo && file_exists(public_path($user->photo))) {
             unlink(public_path($user->photo));
         }
