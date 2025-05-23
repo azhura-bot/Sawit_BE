@@ -70,52 +70,33 @@ class TransaksiController extends Controller
         ], 201);
     }
 
-    public function show($id)
-    {
-        $transaksi = Transaksi::with(['task.pengepul', 'task.janjiTemu'])->findOrFail($id);
-
-        return response()->json([
-            'success' => true,
-            'data' => $transaksi,
-        ]);
-    }
-
     public function update(Request $request, $id)
     {
+        // Validasi hanya field total_harga
         $validated = $request->validate([
-            'task_id' => 'required|exists:tasks,id',
-            'jumlah' => 'required|numeric|min:0',
+            'total_harga' => 'required|numeric|min:0',
         ], [
-            'task_id.required' => 'Kolom Tugas harus diisi.',
-            'task_id.exists' => 'Tugas yang dipilih tidak valid.',
-            'jumlah.required' => 'Kolom Jumlah harus diisi.',
-            'jumlah.numeric' => 'Kolom Jumlah harus berupa angka.',
-            'jumlah.min' => 'Kolom Jumlah tidak boleh kurang dari 0.',
+            'total_harga.required' => 'Kolom Total Harga harus diisi.',
+            'total_harga.numeric'  => 'Kolom Total Harga harus berupa angka.',
+            'total_harga.min'      => 'Kolom Total Harga tidak boleh kurang dari 0.',
         ]);
 
-        $hargaTerbaru = DaftarHarga::latest()->first();
-        if (!$hargaTerbaru) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Harga belum tersedia',
-            ], 400);
-        }
-
-        $totalHarga = $validated['jumlah'] * $hargaTerbaru->harga;
-
+        // Cari transaksi atau 404 jika tidak ada
         $transaksi = Transaksi::findOrFail($id);
+
+        // Update hanya total_harga
         $transaksi->update([
-            'task_id' => $validated['task_id'],
-            'jumlah' => $validated['jumlah'],
-            'total_harga' => $totalHarga,
+            'total_harga' => $validated['total_harga'],
         ]);
 
+        // Kembalikan response success
         return response()->json([
             'success' => true,
-            'data' => $transaksi,
-            'message' => 'Transaksi berhasil diperbarui',
+            'data'    => $transaksi,
+            'message' => 'Transaksi berhasil diperbarui.',
         ]);
     }
+
 
     public function destroy($id)
     {
