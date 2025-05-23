@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\auth\AuthController;
+use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Api\ArtikelController;
 use App\Http\Controllers\Api\PengepulController;
 use App\Http\Controllers\Api\JanjiTemuController;
