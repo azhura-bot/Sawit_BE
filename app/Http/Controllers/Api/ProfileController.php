@@ -5,17 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 use Validator;
 
 class ProfileController extends Controller
 {
-    // Menampilkan data profil
+    // Menampilkan data profil user
     public function showProfile()
     {
         $user = Auth::user();
 
         if ($user) {
-            // Bangun URL foto langsung dari folder public
             $user->photo_url = $user->photo
                 ? url($user->photo)
                 : null;
@@ -30,7 +30,7 @@ class ProfileController extends Controller
         ], 404);
     }
 
-    // Update data profil
+    // Mengupdate data profil user
     public function updateProfile(Request $request)
     {
         $user = Auth::user();
@@ -41,7 +41,7 @@ class ProfileController extends Controller
             ], 404);
         }
 
-        // Validasi input
+        // Validasi data input
         $validator = Validator::make($request->all(), [
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|max:255|unique:users,email,' . $user->id,
@@ -55,26 +55,33 @@ class ProfileController extends Controller
             ], 400);
         }
 
-        // Assign fields
+        // Simpan perubahan data
         $user->name     = $request->name;
         $user->email    = $request->email;
         $user->no_phone = $request->no_phone;
 
-        // Jika ada foto baru
+        // Proses upload foto baru jika ada
         if ($file = $request->file('photo')) {
-            // Hapus lama
-            if ($user->photo && file_exists(public_path($user->photo))) {
-                unlink(public_path($user->photo));
+            // Buat folder public/photos jika belum ada
+            $photoPath = public_path('photos');
+            if (!File::exists($photoPath)) {
+                File::makeDirectory($photoPath, 0755, true);
             }
-            // Simpan langsung ke public/photos
-            $filename     = time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('photos'), $filename);
+
+            // Hapus foto lama jika ada
+            if ($user->photo && file_exists(public_path($user->photo))) {
+                @unlink(public_path($user->photo));
+            }
+
+            // Simpan file baru
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move($photoPath, $filename);
             $user->photo = 'photos/' . $filename;
         }
 
         $user->save();
 
-        // Tambah URL foto
+        // Tambahkan URL untuk foto
         $user->photo_url = $user->photo
             ? url($user->photo)
             : null;
